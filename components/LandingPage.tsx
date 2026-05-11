@@ -123,7 +123,7 @@ export default function LandingPage() {
 
       {/* ── Nav ── */}
       <nav style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(37,99,235,0.1)", position: "sticky", top: 0, zIndex: 50 }}>
-        <div className="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between px-4 md:px-8 py-4 max-w-7xl mx-auto gap-2">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-9 h-9 rounded-xl text-xl"
               style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 4px 12px rgba(37,99,235,0.35)" }}>
@@ -131,7 +131,7 @@ export default function LandingPage() {
             </div>
             <div>
               <span className="font-extrabold text-base tracking-tight" style={{ color: "#0f172a" }}>Inquiry Engine</span>
-              <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>
+              <span className="hidden md:inline ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe" }}>
                 Powered by Claude
               </span>
             </div>

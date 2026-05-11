@@ -104,7 +104,7 @@ export default function DashboardPage() {
         roleLabel="Teacher"
       />
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
         {view === "hub" && (
           <TeacherHub
             teacherClasses={teacherClasses}
@@ -157,12 +157,12 @@ export default function DashboardPage() {
 function Header({ breadcrumb, roleLabel }: { breadcrumb: { label: string; back: () => void } | null; roleLabel: string }) {
   return (
     <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 30 }}>
-      <div className="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto">
-        <div className="flex items-center gap-4">
-          <Link href="/chat" className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "#64748b", textDecoration: "none" }}>
-            <ArrowLeft size={15} /> Back to Chat
+      <div className="flex items-center justify-between px-4 md:px-8 py-4 max-w-7xl mx-auto gap-2">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <Link href="/chat" className="flex items-center gap-1.5 text-sm font-medium flex-shrink-0" style={{ color: "#64748b", textDecoration: "none" }}>
+            <ArrowLeft size={15} /> <span className="hidden sm:inline">Back to Chat</span>
           </Link>
-          <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
+          <div className="hidden sm:block" style={{ width: 1, height: 20, background: "#e2e8f0" }} />
           {breadcrumb && (
             <button onClick={breadcrumb.back} className="inline-flex items-center gap-1 p-1 rounded-lg" style={{ color: "#64748b" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#f1f5f9")}
@@ -232,7 +232,7 @@ function TeacherHub({ teacherClasses, onCreateClass, onOpenClass, onDeleteClass 
           </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 relative">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative">
           <HeroStat label="Students" value={stats?.students ?? "—"} sub="across all classes" color="#60a5fa" />
           <HeroStat label="Sessions this week" value={stats?.sessionsThisWeek ?? "—"} sub="real chat activity" color="#34d399" />
           <HeroStat label="Open misconceptions" value={stats?.openMisconceptions ?? "—"} sub="needs follow-up" color="#fbbf24" alert={stats ? stats.openMisconceptions > 0 : false} />
@@ -470,8 +470,8 @@ function ClassView({ classRoom, members, viewerId, onOpenStudent, onRefresh, onI
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-6 flex-shrink-0">
-                  <Stat label="Mastered" value={masteryCount} color="#16a34a" />
+                <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
+                  <div className="hidden md:block"><Stat label="Mastered" value={masteryCount} color="#16a34a" /></div>
                   <Stat label="Misc." value={miscs} color={miscs > 0 ? "#d97706" : "#94a3b8"} />
                   <Stat label="Growth" value={growth >= 0 ? `+${growth}` : `${growth}`} color={growth > 10 ? "#16a34a" : growth >= 0 ? "#64748b" : "#dc2626"} />
                   <ChevronRight size={16} style={{ color: "#94a3b8" }} />
@@ -595,12 +595,12 @@ function StudentDetailView({ student, snapshots: snapshotsIn, classFilter, viewe
   return (
     <>
       <div className="rounded-2xl p-6 mb-6" style={{ background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white"
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
             style={{ background: "linear-gradient(135deg,#2563eb,#6366f1)" }}>
             {student.avatar}
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-extrabold mb-1" style={{ color: "#0f172a" }}>{student.displayName}</h1>
             <p className="text-sm flex items-center gap-1.5" style={{ color: "#64748b" }}>
               {snapshots.length} session{snapshots.length !== 1 ? "s" : ""} analyzed
@@ -613,7 +613,7 @@ function StudentDetailView({ student, snapshots: snapshotsIn, classFilter, viewe
               )}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 gap-4 md:gap-6 w-full md:w-auto">
             <Stat label="Mastery" value={mastery.filter(c => c.level === "demonstrated" || c.level === "transferred").length} color="#16a34a" />
             <Stat label="Engagement" value={`${avgEng}/10`} color="#2563eb" />
             <Stat label="Growth" value={growth >= 0 ? `+${growth}` : `${growth}`} color={growth >= 0 ? "#16a34a" : "#dc2626"} />
@@ -632,8 +632,8 @@ function StudentDetailView({ student, snapshots: snapshotsIn, classFilter, viewe
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 rounded-2xl p-5" style={{ background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 rounded-2xl p-5" style={{ background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
           <h2 className="font-bold text-sm mb-4" style={{ color: "#0f172a" }}>Concept Mastery</h2>
           {mastery.length === 0 ? (
             <p className="text-xs" style={{ color: "#94a3b8" }}>No concepts tracked yet.</p>
@@ -788,7 +788,7 @@ function StudentView({ userId, displayName, classes, onJoin, joinModal, setJoinM
   return (
     <div className="min-h-screen" style={{ background: "#f8fafc" }}>
       <Header breadcrumb={null} roleLabel="Student" />
-      <div className="max-w-5xl mx-auto px-8 py-8">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-extrabold mb-1" style={{ color: "#0f172a" }}>Your Learning Profile</h1>

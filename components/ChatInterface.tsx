@@ -348,8 +348,8 @@ export default function ChatInterface({ plan }: Props) {
             style={{ background: "linear-gradient(135deg,#1d4ed8,#2563eb)", boxShadow: "0 2px 12px rgba(37,99,235,0.5)" }}>
             🔍
           </div>
-          <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>Inquiry Engine</span>
-          <span className="text-xs px-2 py-0.5 rounded-full"
+          <span className="hidden sm:inline text-sm font-bold" style={{ color: "var(--text-primary)" }}>Inquiry Engine</span>
+          <span className="hidden md:inline text-xs px-2 py-0.5 rounded-full"
             style={{ background: "rgba(37,99,235,0.15)", color: "var(--pill-active-text)", border: "1px solid var(--border)" }}>
             Claude AI
           </span>
@@ -361,34 +361,36 @@ export default function ChatInterface({ plan }: Props) {
                        color: remaining <= 1 ? "#fbbf24" : "var(--text-muted)",
                        border: `1px solid ${remaining <= 1 ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
                        textDecoration: "none" }}>
-              <Zap size={11} /> {remaining} / {FREE_DAILY_LIMIT} left today
+              <Zap size={11} /> {remaining}<span className="hidden sm:inline"> / {FREE_DAILY_LIMIT} left today</span>
             </Link>
           )}
-          <span className="text-xs px-2 py-0.5 rounded-full capitalize"
+          <span className="hidden md:inline-flex text-xs px-2 py-0.5 rounded-full capitalize"
             style={{ background: "var(--surface)", color: "var(--text-muted)", border: "1px solid var(--border)" }}>
             {plan}
           </span>
           <Link href="/guide"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-all"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition-all"
             style={{ color: "var(--text-muted)", border: "1px solid transparent", textDecoration: "none" }}
             title="User guide"
             onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
-            <HelpCircle size={14} /> Guide
+            <HelpCircle size={14} /> <span className="hidden md:inline">Guide</span>
           </Link>
           <Link href="/dashboard"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-all"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition-all"
             style={{ color: "var(--text-muted)", border: "1px solid transparent", textDecoration: "none" }}
+            title="Dashboard"
             onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
-            <LayoutDashboard size={14} /> Dashboard
+            <LayoutDashboard size={14} /> <span className="hidden md:inline">Dashboard</span>
           </Link>
           <button onClick={() => setSettingsOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-all"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition-all"
+            title="Settings"
             style={{ color: "var(--text-muted)", border: "1px solid transparent" }}
             onMouseEnter={e => { e.currentTarget.style.color = "var(--primary)"; e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
-            <Settings2 size={14} /> Settings
+            <Settings2 size={14} /> <span className="hidden md:inline">Settings</span>
           </button>
           <UserButton />
         </div>
