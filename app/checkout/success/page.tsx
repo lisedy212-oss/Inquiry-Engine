@@ -1,11 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
-export default function CheckoutSuccess() {
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <CheckoutSuccessContent />
+    </Suspense>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-8" style={{ background: "linear-gradient(180deg,#eff6ff,#fff)" }}>
+      <div className="text-center">
+        <Loader2 size={32} className="animate-spin mx-auto mb-3" style={{ color: "#2563eb" }} />
+        <p className="text-sm" style={{ color: "#64748b" }}>Loading…</p>
+      </div>
+    </div>
+  );
+}
+
+function CheckoutSuccessContent() {
   const params = useSearchParams();
   const router = useRouter();
   const sessionId = params.get("session_id");
