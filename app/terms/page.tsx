@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
+import NavMenu from "@/components/NavMenu";
 
 export const metadata = {
   title: "Terms of Service · The Inquiry Engine",
@@ -133,20 +134,15 @@ export default function TermsPage() {
 function Header() {
   return (
     <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 30 }}>
-      <div className="flex items-center justify-between px-8 py-4 max-w-6xl mx-auto">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-1.5 text-sm font-medium" style={{ color: "#64748b", textDecoration: "none" }}>
-            <ArrowLeft size={15} /> Home
-          </Link>
-          <div style={{ width: 1, height: 20, background: "#e2e8f0" }} />
-          <Link href="/" className="flex items-center gap-2.5" style={{ textDecoration: "none" }}>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
-              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}>
-              🔍
-            </div>
-            <span className="font-bold text-sm" style={{ color: "#0f172a" }}>Inquiry Engine</span>
-          </Link>
-        </div>
+      <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-4 max-w-6xl mx-auto gap-2">
+        <Link href="/" className="flex items-center gap-2.5" style={{ textDecoration: "none" }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}>
+            🔍
+          </div>
+          <span className="font-bold text-sm" style={{ color: "#0f172a" }}>Inquiry Engine</span>
+        </Link>
+        <NavMenu />
       </div>
     </header>
   );

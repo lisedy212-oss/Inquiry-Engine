@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { setChatMode } from "@/lib/activeClass";
 import {
-  ArrowLeft, Users, TrendingUp, Brain, AlertTriangle, Sparkles,
+  Users, TrendingUp, Brain, AlertTriangle, Sparkles,
   Search, ChevronRight, Activity, Award, Copy, Check,
   Plus, BookOpen, Lock, GraduationCap, ChevronLeft, Trash2,
   StickyNote, Download, ArrowUpDown, UserPlus, X, Clock,
 } from "lucide-react";
+import NavMenu from "@/components/NavMenu";
 import {
   aggregateMastery, recentMisconceptions, growthScore,
   depthTrend, subjectBreakdown,
@@ -157,38 +158,35 @@ export default function DashboardPage() {
 function Header({ breadcrumb, roleLabel }: { breadcrumb: { label: string; back: () => void } | null; roleLabel: string }) {
   return (
     <header style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 30 }}>
-      <div className="flex items-center justify-between px-4 md:px-8 py-4 max-w-7xl mx-auto gap-2">
-        <div className="flex items-center gap-2 md:gap-4 min-w-0">
-          <Link href="/chat" className="flex items-center gap-1.5 text-sm font-medium flex-shrink-0" style={{ color: "#64748b", textDecoration: "none" }}>
-            <ArrowLeft size={15} /> <span className="hidden sm:inline">Back to Chat</span>
-          </Link>
-          <div className="hidden sm:block" style={{ width: 1, height: 20, background: "#e2e8f0" }} />
+      <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-4 max-w-7xl mx-auto gap-2">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           {breadcrumb && (
-            <button onClick={breadcrumb.back} className="inline-flex items-center gap-1 p-1 rounded-lg" style={{ color: "#64748b" }}
+            <button onClick={breadcrumb.back} className="inline-flex items-center gap-1 p-1.5 rounded-lg flex-shrink-0" style={{ color: "#64748b" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#f1f5f9")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
               <ChevronLeft size={16} />
             </button>
           )}
-          <Link href="/" className="flex items-center gap-2.5 transition-opacity" style={{ textDecoration: "none" }}
+          <Link href="/" className="flex items-center gap-2.5 transition-opacity min-w-0" style={{ textDecoration: "none" }}
             onMouseEnter={e => (e.currentTarget.style.opacity = "0.75")}
             onMouseLeave={e => (e.currentTarget.style.opacity = "1")}>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm flex-shrink-0"
               style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 2px 8px rgba(37,99,235,0.3)" }}>
               🎓
             </div>
-            <div>
-              <div className="font-bold text-sm flex items-center gap-2" style={{ color: "#0f172a" }}>
-                {breadcrumb ? breadcrumb.label : "Teacher Dashboard"}
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+            <div className="min-w-0">
+              <div className="font-bold text-sm flex items-center gap-2 truncate" style={{ color: "#0f172a" }}>
+                <span className="truncate">{breadcrumb ? breadcrumb.label : "Dashboard"}</span>
+                <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
                   style={{ background: "linear-gradient(135deg,#dbeafe,#e0e7ff)", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>
                   {roleLabel}
                 </span>
               </div>
-              <div className="text-xs" style={{ color: "#94a3b8" }}>Learning DNA · privacy-protected per student</div>
+              <div className="hidden md:block text-xs" style={{ color: "#94a3b8" }}>Learning DNA · privacy-protected per student</div>
             </div>
           </Link>
         </div>
+        <NavMenu />
       </div>
     </header>
   );

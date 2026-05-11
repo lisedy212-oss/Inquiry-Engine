@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
+import { SignUpButton, useUser } from "@clerk/nextjs";
 import { ArrowRight, Check, Lock, Zap, BookOpen, FileSearch, Map, Brain, AlertTriangle, TrendingUp, Sparkles } from "lucide-react";
+import NavMenu from "./NavMenu";
 
 function useInView(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -136,36 +137,22 @@ export default function LandingPage() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/guide" className="px-3 py-2 text-sm font-medium rounded-xl transition-colors hidden md:inline-block" style={{ color: "#6b7280", textDecoration: "none" }}
-              onMouseEnter={e => (e.currentTarget.style.color = "#2563eb")}
-              onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>
-              Guide
-            </Link>
+          <div className="flex items-center gap-2 md:gap-3">
             {isSignedIn ? (
-              <Link href="/chat" className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-bold text-white"
+              <Link href="/chat" className="flex items-center gap-1.5 rounded-xl px-3 sm:px-5 py-2 text-sm font-bold text-white"
                 style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 4px 16px rgba(37,99,235,0.35)" }}>
-                Open Chat <ArrowRight size={14} />
+                <span className="hidden sm:inline">Open Chat</span><span className="sm:hidden">Chat</span> <ArrowRight size={14} />
               </Link>
             ) : (
-              <>
-                <SignInButton mode="modal">
-                  <button className="px-4 py-2 text-sm font-medium rounded-xl transition-colors" style={{ color: "#6b7280" }}
-                    onMouseEnter={e => (e.currentTarget.style.color = "#2563eb")}
-                    onMouseLeave={e => (e.currentTarget.style.color = "#6b7280")}>
-                    Sign In
-                  </button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-bold text-white transition-all"
-                    style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 4px 16px rgba(37,99,235,0.3)" }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 6px 24px rgba(37,99,235,0.5)")}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(37,99,235,0.3)")}>
-                    Get Started Free <ArrowRight size={14} />
-                  </button>
-                </SignUpButton>
-              </>
+              <SignUpButton mode="modal">
+                <button className="flex items-center gap-1.5 rounded-xl px-3 sm:px-5 py-2 text-sm font-bold text-white transition-all"
+                  style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 4px 16px rgba(37,99,235,0.3)" }}>
+                  <span className="hidden sm:inline">Get Started Free</span><span className="sm:hidden">Sign Up</span>
+                  <ArrowRight size={14} />
+                </button>
+              </SignUpButton>
             )}
+            <NavMenu />
           </div>
         </div>
       </nav>
@@ -198,7 +185,7 @@ export default function LandingPage() {
           </div>
         ))}
 
-        <div className="relative z-10 flex flex-col items-center text-center px-6 pt-24 pb-32 max-w-5xl mx-auto">
+        <div className="relative z-10 flex flex-col items-center text-center px-4 md:px-6 pt-16 md:pt-24 pb-20 md:pb-32 max-w-5xl mx-auto">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold mb-8 animate-fade-in"
             style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#2563eb", boxShadow: "0 2px 8px rgba(37,99,235,0.12)" }}>
@@ -206,7 +193,7 @@ export default function LandingPage() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight mb-6 animate-fade-in" style={{ animationDelay: "0.1s", color: "#0f172a" }}>
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight leading-tight mb-6 animate-fade-in" style={{ animationDelay: "0.1s", color: "#0f172a" }}>
             Learn to{" "}
             <span style={{
               background: "linear-gradient(135deg, #2563eb, #1d4ed8, #0ea5e9)",
@@ -423,7 +410,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features ── */}
-      <section ref={features.ref} className="py-24 px-6" style={{ background: "#fff" }}>
+      <section ref={features.ref} className="py-16 md:py-24 px-4 md:px-6" style={{ background: "#fff" }}>
         <div className="max-w-6xl mx-auto" style={{ transition: "opacity 0.7s, transform 0.7s", opacity: features.inView ? 1 : 0, transform: features.inView ? "none" : "translateY(32px)" }}>
           <div className="text-center mb-14">
             <div className="inline-block text-4xl mb-3">🎓</div>
@@ -467,7 +454,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Example Questions ── */}
-      <section id="examples" ref={examples.ref} className="py-24 px-6" style={{ background: "#fff" }}>
+      <section id="examples" ref={examples.ref} className="py-16 md:py-24 px-4 md:px-6" style={{ background: "#fff" }}>
         <div className="max-w-6xl mx-auto" style={{ transition: "opacity 0.7s, transform 0.7s", opacity: examples.inView ? 1 : 0, transform: examples.inView ? "none" : "translateY(32px)" }}>
           <div className="text-center mb-14">
             <div className="inline-block text-4xl mb-3">💡</div>
@@ -520,7 +507,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" ref={pricing.ref} className="py-24 px-6" style={{ background: "#f0f7ff" }}>
+      <section id="pricing" ref={pricing.ref} className="py-16 md:py-24 px-4 md:px-6" style={{ background: "#f0f7ff" }}>
         <div className="max-w-6xl mx-auto" style={{ transition: "opacity 0.7s, transform 0.7s", opacity: pricing.inView ? 1 : 0, transform: pricing.inView ? "none" : "translateY(32px)" }}>
           <div className="text-center mb-14">
             <div className="inline-block text-4xl mb-3">💳</div>
