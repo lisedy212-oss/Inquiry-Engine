@@ -589,12 +589,21 @@ export default function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="py-10 px-6 text-center" style={{ background: "#fff", borderTop: "1px solid #dbeafe" }}>
-        <div className="flex items-center justify-center gap-2 mb-2">
+        <div className="flex items-center justify-center gap-2 mb-3">
           <span className="text-xl">🔍</span>
           <span className="font-extrabold" style={{ color: "#0f172a" }}>Inquiry Engine</span>
         </div>
+        <div className="flex items-center justify-center gap-4 mb-3 flex-wrap text-xs" style={{ color: "#64748b" }}>
+          <Link href="/guide" style={{ color: "#64748b", textDecoration: "none" }}>Guide</Link>
+          <span style={{ color: "#cbd5e1" }}>·</span>
+          <Link href="/privacy" style={{ color: "#64748b", textDecoration: "none" }}>Privacy</Link>
+          <span style={{ color: "#cbd5e1" }}>·</span>
+          <Link href="/terms" style={{ color: "#64748b", textDecoration: "none" }}>Terms</Link>
+          <span style={{ color: "#cbd5e1" }}>·</span>
+          <a href="mailto:inquiryengine1@gmail.com" style={{ color: "#64748b", textDecoration: "none" }}>Contact</a>
+        </div>
         <p className="text-xs mb-1" style={{ color: "#94a3b8" }}>AI responses powered by Claude · Anthropic</p>
-        <p className="text-xs" style={{ color: "#94a3b8" }}>© 2025 The Inquiry Engine · Built to make you think</p>
+        <p className="text-xs" style={{ color: "#94a3b8" }}>© 2026 Inquiry Engine · Built to make you think</p>
       </footer>
     </div>
   );

@@ -417,6 +417,13 @@ textarea:focus { outline: none; }
   50%  { transform: translate(28px,-18px) scale(1.05); }
   100% { transform: translate(-14px,28px) scale(0.97); }
 }
+/* ─── Legal page typography ──────────────────────────── */
+.prose-legal p { margin: 0.6rem 0; line-height: 1.65; }
+.prose-legal p:first-child { margin-top: 0; }
+.prose-legal ul { list-style: disc; padding-left: 1.4rem; margin: 0.6rem 0; }
+.prose-legal ul li { margin: 0.25rem 0; }
+.prose-legal a { text-decoration: underline; }
+
 .animate-fade-in { animation: fade-in-up 0.7s ease both; }
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(20px); }
