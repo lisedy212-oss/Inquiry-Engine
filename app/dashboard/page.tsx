@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [createModal, setCreateModal] = useState(false);
   const [joinModal, setJoinModal] = useState(false);
   const [inviteTeacherModal, setInviteTeacherModal] = useState(false);
+  const [inviteStudentsModal, setInviteStudentsModal] = useState(false);
 
   const [teacherClasses, setTeacherClasses] = useState<ClassRoom[]>([]);
   const [studentClasses, setStudentClasses] = useState<ClassRoom[]>([]);
@@ -125,6 +126,7 @@ export default function DashboardPage() {
             onOpenStudent={(id) => { setActiveStudentId(id); setView("student"); }}
             onRefresh={async () => { if (activeClassId) setClassDetail(await getClassDetail(activeClassId)); }}
             onInviteTeacher={() => setInviteTeacherModal(true)}
+            onInviteStudents={() => setInviteStudentsModal(true)}
           />
         )}
 
@@ -142,6 +144,9 @@ export default function DashboardPage() {
       {joinModal && <JoinClassModal onClose={() => setJoinModal(false)} onJoined={async () => { setJoinModal(false); await reloadClasses(); }} />}
       {inviteTeacherModal && classDetail && (
         <InviteTeacherModal classRoom={classDetail.classRoom} onClose={() => setInviteTeacherModal(false)} />
+      )}
+      {inviteStudentsModal && classDetail && (
+        <InviteStudentsModal classRoom={classDetail.classRoom} onClose={() => setInviteStudentsModal(false)} />
       )}
     </div>
   );
@@ -277,13 +282,14 @@ function TeacherHub({ teacherClasses, onCreateClass, onOpenClass, onDeleteClass 
 // ─── Class detail ───────────────────────────────────────────────────
 type SortBy = "name" | "growth" | "miscs" | "activity";
 
-function ClassView({ classRoom, members, viewerId, onOpenStudent, onRefresh, onInviteTeacher }: {
+function ClassView({ classRoom, members, viewerId, onOpenStudent, onRefresh, onInviteTeacher, onInviteStudents }: {
   classRoom: ClassRoom;
   members: ClassMember[];
   viewerId: string;
   onOpenStudent: (id: string) => void;
   onRefresh: () => void;
   onInviteTeacher: () => void;
+  onInviteStudents: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("activity");
@@ -421,6 +427,11 @@ function ClassView({ classRoom, members, viewerId, onOpenStudent, onRefresh, onI
                 placeholder="Search students…" className="bg-transparent outline-none text-xs w-36"
                 style={{ color: "#0f172a" }} />
             </div>
+            <button onClick={onInviteStudents}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg text-white"
+              style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", boxShadow: "0 2px 8px rgba(37,99,235,0.25)" }}>
+              <UserPlus size={11} /> Invite Students
+            </button>
             <button onClick={exportCSV}
               className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
               style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>
@@ -1005,6 +1016,92 @@ function JoinClassModal({ onClose, onJoined }: { onClose: () => void; onJoined: 
           {busy ? "Joining…" : "Join Class"}
         </button>
       </div>
+    </ModalShell>
+  );
+}
+
+function InviteStudentsModal({ classRoom, onClose }: { classRoom: ClassRoom; onClose: () => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ sent: number; failed: number; results: { email: string; ok: boolean; error?: string }[] } | null>(null);
+
+  function parseEmails(s: string): string[] {
+    // Split on commas, semicolons, spaces, or newlines
+    return s.split(/[\s,;]+/).map(e => e.trim()).filter(Boolean);
+  }
+  const emails = parseEmails(text);
+  const validCount = emails.filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)).length;
+
+  async function send() {
+    if (busy || validCount === 0) return;
+    setBusy(true);
+    const r = await fetch(`/api/classes/${classRoom.id}/invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails, role: "student" }),
+    });
+    const data = await r.json();
+    setBusy(false);
+    if (r.ok) setResult(data);
+    else alert(data.error ?? "Failed to send invites");
+  }
+
+  return (
+    <ModalShell onClose={onClose}>
+      {!result ? (
+        <>
+          <div className="text-3xl mb-4 text-center">📧</div>
+          <h2 className="font-extrabold text-xl mb-2 text-center" style={{ color: "#0f172a" }}>Invite Students by Email</h2>
+          <p className="text-sm mb-4 text-center" style={{ color: "#64748b" }}>
+            Paste student emails — one per line, or separated by commas. Each student gets an email with a one-click join link for <strong>{classRoom.name}</strong>.
+          </p>
+          <textarea value={text} onChange={e => setText(e.target.value)} rows={6} autoFocus
+            placeholder={"alex@school.edu\nsofia@school.edu\njordan@school.edu"}
+            className="w-full rounded-xl px-3 py-2 text-sm font-mono outline-none resize-none mb-2"
+            style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#0f172a" }} />
+          <div className="text-xs mb-4" style={{ color: "#64748b" }}>
+            {validCount > 0
+              ? <><strong style={{ color: "#16a34a" }}>{validCount}</strong> valid email{validCount !== 1 ? "s" : ""} detected</>
+              : "Add at least one email to send"}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 rounded-xl py-2.5 text-sm font-medium"
+              style={{ background: "#f1f5f9", color: "#64748b" }}>Cancel</button>
+            <button onClick={send} disabled={validCount === 0 || busy}
+              className="flex-1 rounded-xl py-2.5 text-sm font-bold text-white"
+              style={{ background: validCount > 0 && !busy ? "linear-gradient(135deg,#2563eb,#1d4ed8)" : "#cbd5e1",
+                       cursor: validCount > 0 && !busy ? "pointer" : "not-allowed" }}>
+              {busy ? "Sending…" : `Send ${validCount} Invite${validCount !== 1 ? "s" : ""}`}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="text-3xl mb-4 text-center">✉️</div>
+          <h2 className="font-extrabold text-xl mb-2 text-center" style={{ color: "#0f172a" }}>
+            {result.sent > 0 ? `${result.sent} invite${result.sent !== 1 ? "s" : ""} sent!` : "Couldn't send invites"}
+          </h2>
+          <p className="text-sm mb-5 text-center" style={{ color: "#64748b" }}>
+            {result.sent > 0 ? "Students will get an email with a one-click join link. The link expires in 30 days." : "Check the errors below and try again."}
+          </p>
+
+          {result.results.some(r => !r.ok) && (
+            <div className="rounded-xl p-3 mb-4 text-xs" style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
+              <div className="font-bold mb-1" style={{ color: "#92400e" }}>Some failed:</div>
+              <ul className="space-y-0.5" style={{ color: "#78350f" }}>
+                {result.results.filter(r => !r.ok).map((r, i) => (
+                  <li key={i}><code>{r.email}</code> — {r.error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <button onClick={onClose} className="w-full rounded-xl py-2.5 text-sm font-bold text-white"
+            style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+            Done
+          </button>
+        </>
+      )}
     </ModalShell>
   );
 }
