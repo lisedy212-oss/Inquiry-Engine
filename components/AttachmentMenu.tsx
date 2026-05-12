@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, FileText, Image, Paperclip, Link2, Lock, X, ArrowRight, Camera, Mic, Square, RotateCcw } from "lucide-react";
+import { Plus, FileText, Image, Paperclip, Link2, Lock, X, ArrowRight, Camera, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export interface PendingAttachment {
@@ -13,37 +13,32 @@ interface Props {
   plan: string; attachments: PendingAttachment[];
   onChange: (a: PendingAttachment[]) => void;
   onPDFParsed: (text: string, filename: string, numPages: number) => void;
-  onVoiceTranscript?: (text: string) => void;
 }
 
-type ItemType = "pdf" | "photo" | "camera" | "voice" | "file" | "link";
+type ItemType = "pdf" | "photo" | "camera" | "file" | "link";
 
-// Free tier: PDF + Photo upload only. Camera/Voice/File/URL require a paid plan.
+// Free tier: PDF + Photo upload only. Camera/File/URL require a paid plan.
 const isAllowed = (type: ItemType, plan: string) =>
   type === "pdf" || type === "photo" || plan !== "free";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SpeechRecognitionLike = any;
+function isMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
 
-export default function AttachmentMenu({ plan, attachments, onChange, onPDFParsed, onVoiceTranscript }: Props) {
+export default function AttachmentMenu({ plan, attachments, onChange, onPDFParsed }: Props) {
   const [open, setOpen] = useState(false);
   const [linkPrompt, setLinkPrompt] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [uploading, setUploading] = useState(false);
   const [pressedType, setPressedType] = useState<ItemType | null>(null);
 
-  // Voice state
-  const [voiceOpen, setVoiceOpen] = useState(false);
-  const [voiceText, setVoiceText] = useState("");
-  const [voiceListening, setVoiceListening] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
-  const recognitionRef = useRef<SpeechRecognitionLike>(null);
-
   // Camera state
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [captured, setCaptured] = useState<string | null>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [canFlip, setCanFlip] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -102,13 +97,22 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
     setLinkValue(""); setLinkPrompt(false); setOpen(false);
   }
 
-  // ─── Camera (uses getUserMedia — works on mobile AND desktop) ────
+  // ─── Camera ──────────────────────────────────────────────────────
   async function openCamera() {
     setOpen(false);
     setCameraOpen(true);
     setCaptured(null);
     setCameraError(null);
-    await startCameraStream(facingMode);
+    // Default to rear on mobile, front on desktop
+    const initial: "environment" | "user" = isMobile() ? "environment" : "user";
+    setFacingMode(initial);
+    await startCameraStream(initial);
+    // Check if device has multiple cameras for the flip button
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === "videoinput");
+      setCanFlip(cams.length > 1);
+    } catch { setCanFlip(false); }
   }
 
   async function startCameraStream(mode: "environment" | "user") {
@@ -116,28 +120,35 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
       setCameraError("Your browser doesn't support camera access. Try Chrome, Safari, or Edge.");
       return;
     }
-    // Stop any previous stream
     streamRef.current?.getTracks().forEach(t => t.stop());
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-    } catch (err: unknown) {
-      const e = err as { name?: string; message?: string };
-      if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
-        setCameraError("Camera permission denied. Click the camera icon in your browser's address bar to allow it.");
-      } else if (e.name === "NotFoundError") {
-        setCameraError("No camera found on this device.");
-      } else {
-        setCameraError(e.message ?? "Couldn't access camera.");
+
+    // Try the requested facingMode first; if it fails, fall back to any camera
+    const attempts: MediaStreamConstraints[] = [
+      { video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+      { video: { facingMode: mode === "environment" ? "user" : "environment" }, audio: false },
+      { video: true, audio: false }, // any camera
+    ];
+
+    for (const constraints of attempts) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+        return; // success
+      } catch (err: unknown) {
+        const e = err as { name?: string };
+        // Permission denied — don't keep trying with other constraints
+        if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+          setCameraError("Camera permission denied. Click the camera icon in your browser's address bar to allow it, then try again.");
+          return;
+        }
+        // Else: keep falling back
       }
     }
+    setCameraError("Couldn't access any camera on this device.");
   }
 
   function flipCamera() {
@@ -150,8 +161,8 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
@@ -177,80 +188,6 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
 
   useEffect(() => { return () => { streamRef.current?.getTracks().forEach(t => t.stop()); }; }, []);
 
-  // ─── Voice (Web Speech API) ─────────────────────────────────────
-  function openVoice() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR: SpeechRecognitionLike = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
-      setVoiceError("Voice isn't supported in this browser. Try Chrome or Safari.");
-      setVoiceOpen(true);
-      return;
-    }
-    setOpen(false);
-    setVoiceOpen(true); setVoiceText(""); setVoiceError(null);
-    startListening(SR);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function startListening(SR: any) {
-    const recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-
-    let finalText = "";
-    recognition.onresult = (e: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>; resultIndex: number }) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interim += r[0].transcript;
-      }
-      setVoiceText((finalText + " " + interim).trim());
-    };
-    recognition.onerror = (e: { error: string }) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        setVoiceError("Microphone permission denied. Click the lock icon in your browser's address bar to allow it.");
-      } else if (e.error === "no-speech") {
-        setVoiceError("No speech detected. Try again.");
-      } else {
-        setVoiceError(`Mic error: ${e.error}`);
-      }
-      setVoiceListening(false);
-    };
-    recognition.onend = () => setVoiceListening(false);
-
-    try {
-      recognition.start();
-      setVoiceListening(true);
-      recognitionRef.current = recognition;
-    } catch (err) {
-      setVoiceError(err instanceof Error ? err.message : "Couldn't start recording");
-    }
-  }
-
-  function stopVoice() {
-    try { recognitionRef.current?.stop(); } catch { /* */ }
-    setVoiceListening(false);
-  }
-
-  function restartVoice() {
-    setVoiceText(""); setVoiceError(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SR: SpeechRecognitionLike = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SR) startListening(SR);
-  }
-
-  function applyVoice() {
-    if (voiceText.trim() && onVoiceTranscript) onVoiceTranscript(voiceText.trim());
-    closeVoice();
-  }
-
-  function closeVoice() {
-    try { recognitionRef.current?.stop(); } catch { /* */ }
-    setVoiceOpen(false); setVoiceText(""); setVoiceListening(false); setVoiceError(null);
-  }
-
   // ─── Items ──────────────────────────────────────────────────────
   interface Item {
     icon: typeof FileText;
@@ -263,12 +200,11 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
   }
 
   const ITEMS: Item[] = [
-    { icon: FileText, label: "Upload a PDF",      subtitle: "Textbook, worksheet, notes",   type: "pdf",    iconColor: "#ef4444", onSelect: () => pdfRef.current?.click() },
-    { icon: Image,    label: "Upload a Photo",    subtitle: "From your photo library",       type: "photo",  iconColor: "#10b981", onSelect: () => photoRef.current?.click() },
-    { icon: Camera,   label: "Take a Photo",      subtitle: "Use your device camera",        type: "camera", iconColor: "#f59e0b", onSelect: openCamera },
-    { icon: Mic,      label: "Voice Note",        subtitle: "Speak your question",           type: "voice",  iconColor: "#a855f7", onSelect: openVoice },
-    { icon: Paperclip,label: "Document File",     subtitle: "Code, .txt, .md, .csv, .json",  type: "file",   iconColor: "#6366f1", onSelect: () => fileRef.current?.click() },
-    { icon: Link2,    label: "Paste a URL",       subtitle: "Reference a website",           type: "link",   iconColor: "#0ea5e9", onSelect: () => setLinkPrompt(true), keepOpen: true },
+    { icon: FileText,  label: "Upload a PDF",      subtitle: "Textbook, worksheet, notes",   type: "pdf",    iconColor: "#ef4444", onSelect: () => pdfRef.current?.click() },
+    { icon: Image,     label: "Upload a Photo",    subtitle: "From your photo library",      type: "photo",  iconColor: "#10b981", onSelect: () => photoRef.current?.click() },
+    { icon: Camera,    label: "Take a Photo",      subtitle: "Use your device camera",       type: "camera", iconColor: "#f59e0b", onSelect: openCamera },
+    { icon: Paperclip, label: "Document File",     subtitle: "Code, .txt, .md, .csv, .json", type: "file",   iconColor: "#6366f1", onSelect: () => fileRef.current?.click() },
+    { icon: Link2,     label: "Paste a URL",       subtitle: "Reference a website",          type: "link",   iconColor: "#0ea5e9", onSelect: () => setLinkPrompt(true), keepOpen: true },
   ];
 
   function handleItemClick(item: Item) {
@@ -392,7 +328,7 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
                   <button onClick={() => router.push("/pricing")}
                     className="mx-2 mt-1.5 mb-1 rounded-xl py-2 text-xs font-bold text-center w-[calc(100%-1rem)]"
                     style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#fff" }}>
-                    Unlock camera, mic & more ↗
+                    Unlock camera, files & URLs ↗
                   </button>
                 )}
               </>
@@ -466,100 +402,20 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
                 </>
               ) : (
                 <>
-                  <button onClick={flipCamera}
-                    className="flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold"
-                    style={{ background: "rgba(255,255,255,0.08)", color: "#d1d5db" }}
-                    title="Switch camera">
-                    <RotateCcw size={14} />
-                  </button>
+                  {canFlip && (
+                    <button onClick={flipCamera}
+                      className="flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold"
+                      style={{ background: "rgba(255,255,255,0.08)", color: "#d1d5db" }}
+                      title="Switch camera">
+                      <RotateCcw size={14} />
+                    </button>
+                  )}
                   <button onClick={capturePhoto}
                     className="flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold text-white"
                     style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)" }}>
                     <Camera size={14} /> Capture
                   </button>
                 </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Voice Modal ───────────────────────────────────────── */}
-      {voiceOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
-          onClick={closeVoice}>
-          <div className="rounded-3xl max-w-md w-full p-7"
-            onClick={e => e.stopPropagation()}
-            style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
-
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                  style={{ background: "rgba(168,85,247,0.18)", color: "#c084fc" }}>
-                  <Mic size={16} />
-                </div>
-                <h2 className="font-extrabold" style={{ color: "#fff" }}>Voice Note</h2>
-              </div>
-              <button onClick={closeVoice} style={{ color: "#9ca3af" }}><X size={18} /></button>
-            </div>
-
-            {voiceError ? (
-              <div className="rounded-xl p-3 mb-4 text-xs" style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.3)", color: "#fca5a5" }}>
-                ⚠ {voiceError}
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-center mb-5">
-                  <div className="relative">
-                    <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${voiceListening ? "animate-pulse" : ""}`}
-                      style={{
-                        background: voiceListening ? "linear-gradient(135deg,#a855f7,#c084fc)" : "rgba(255,255,255,0.06)",
-                        boxShadow: voiceListening ? "0 0 40px rgba(168,85,247,0.5)" : "none",
-                      }}>
-                      <Mic size={28} style={{ color: voiceListening ? "#fff" : "#9ca3af" }} />
-                    </div>
-                    {voiceListening && (
-                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: "#ef4444" }} />
-                        <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: "#ef4444" }} />
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-sm text-center mb-1" style={{ color: "#d1d5db" }}>
-                  {voiceListening ? "Listening… speak naturally" : voiceText ? "Got it. Edit or send." : "Tap below to start"}
-                </p>
-                <div className="rounded-xl p-3 my-4 min-h-[80px] max-h-[200px] overflow-y-auto"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <p className="text-sm leading-relaxed" style={{ color: voiceText ? "#fff" : "#6b7280" }}>
-                    {voiceText || "Your transcription will appear here…"}
-                  </p>
-                </div>
-              </>
-            )}
-
-            <div className="flex gap-3">
-              {voiceListening ? (
-                <button onClick={stopVoice}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold"
-                  style={{ background: "#ef4444", color: "#fff" }}>
-                  <Square size={14} fill="#fff" /> Stop
-                </button>
-              ) : (
-                <button onClick={restartVoice} disabled={!!voiceError && voiceError.includes("not supported")}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold"
-                  style={{ background: "linear-gradient(135deg,#a855f7,#7c3aed)", color: "#fff" }}>
-                  <Mic size={14} /> {voiceText ? "Record more" : "Start recording"}
-                </button>
-              )}
-              {voiceText && !voiceListening && (
-                <button onClick={applyVoice}
-                  className="flex-1 rounded-xl py-3 text-sm font-bold text-white"
-                  style={{ background: "linear-gradient(135deg,#1d4ed8,#2563eb)" }}>
-                  Use This Text
-                </button>
               )}
             </div>
           </div>

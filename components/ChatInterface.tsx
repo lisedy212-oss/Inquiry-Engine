@@ -322,11 +322,7 @@ export default function ChatInterface({ plan }: Props) {
 
       <div className="search-actions">
         <AttachmentMenu plan={plan} attachments={attachments} onChange={setAttachments}
-          onPDFParsed={(text, filename) => { setPdfText(text); setPdfLabel(filename); }}
-          onVoiceTranscript={(text) => {
-            setInput(prev => prev ? `${prev} ${text}` : text);
-            setTimeout(() => { textareaRef.current?.focus(); resize(); }, 0);
-          }} />
+          onPDFParsed={(text, filename) => { setPdfText(text); setPdfLabel(filename); }} />
         <button onClick={() => send(input)} disabled={!canSend} className="send-btn"
           style={{
             background: canSend ? "linear-gradient(135deg,#1d4ed8,#2563eb)" : "var(--surface)",

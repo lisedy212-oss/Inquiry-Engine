@@ -173,7 +173,8 @@ function StudentGuide() {
         <SectionTitle icon="🛠️" title="Features in the chat" />
         <div className="grid md:grid-cols-2 gap-4">
           <Feature icon={<FileText size={16} />} title="PDF Upload" desc="Upload a textbook or worksheet and the AI cites exact pages — never just summarizes." free />
-          <Feature icon={<ImageIcon size={16} />} title="Photo Upload" desc="Snap a photo of your homework. The AI reads it and walks you through it." free />
+          <Feature icon={<ImageIcon size={16} />} title="Photo Upload" desc="Pick a homework photo from your library. The AI reads it and walks you through it." free />
+          <Feature icon="📸" title="Take a Photo" desc="Open your device camera right inside the chat. Works on phones, tablets, and laptops with webcams." />
           <Feature icon={<Brain size={16} />} title="3 AI Modes" desc="Default (balanced), Fast (Haiku — instant), Thinking (deeper reasoning for hard problems)." />
           <Feature icon={<Sparkles size={16} />} title="Suggested Questions" desc="Stuck on what to ask? The welcome screen has four conversation starters by subject." />
           <Feature icon="📎" title="Attach Files & Links" desc="Paid plans: upload .txt/.md/.csv files or reference URLs." />

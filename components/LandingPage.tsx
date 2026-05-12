@@ -90,7 +90,7 @@ const PLANS = [
     features: ["5 questions per day", "PDF uploads", "Photo uploads", "Socratic guidance"],
     locked: ["Unlimited questions", "Learning DNA tracking", "File uploads", "Link references"], highlight: false, cta: "Get Started" },
   { id: "individual", name: "Individual", price: "$15", period: "/month",
-    features: ["Unlimited questions", "Personal Learning DNA", "File & link uploads", "All AI models (Thinking)", "Priority responses", "Custom AI tutor settings"],
+    features: ["Unlimited questions", "Personal Learning DNA", "Camera, files & link uploads", "All AI models (Thinking)", "Priority responses", "Custom AI tutor settings"],
     locked: [], highlight: true, cta: "Start Learning" },
   { id: "classes", name: "Classes", price: "$100", period: "/month",
     features: ["Everything in Individual", "Class Learning DNA Dashboard", "Up to 35 students", "Misconception alerts", "Per-student growth tracking", "Assignment-aware tutoring"],
