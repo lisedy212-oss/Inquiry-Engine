@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, FileText, Image, Paperclip, Link2, Lock, X, ArrowRight } from "lucide-react";
+import { Plus, FileText, Image, Paperclip, Link2, Lock, X, ArrowRight, Camera, Mic, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export interface PendingAttachment {
@@ -13,21 +13,33 @@ interface Props {
   plan: string; attachments: PendingAttachment[];
   onChange: (a: PendingAttachment[]) => void;
   onPDFParsed: (text: string, filename: string, numPages: number) => void;
+  onVoiceTranscript?: (text: string) => void;
 }
 
-type AttachmentType = "pdf" | "photo" | "file" | "link";
+type ItemType = "pdf" | "photo" | "camera" | "voice" | "file" | "link";
 
-const isAllowed = (type: AttachmentType, plan: string) =>
-  type === "pdf" || type === "photo" || plan !== "free";
+const isAllowed = (type: ItemType, plan: string) =>
+  type === "pdf" || type === "photo" || type === "camera" || type === "voice" || plan !== "free";
 
-export default function AttachmentMenu({ plan, attachments, onChange, onPDFParsed }: Props) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionLike = any;
+
+export default function AttachmentMenu({ plan, attachments, onChange, onPDFParsed, onVoiceTranscript }: Props) {
   const [open, setOpen] = useState(false);
   const [linkPrompt, setLinkPrompt] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [pressedType, setPressedType] = useState<ItemType | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike>(null);
+
   const menuRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -41,6 +53,7 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
     return () => document.removeEventListener("mousedown", fn);
   }, []);
 
+  // ─── File handlers ──────────────────────────────────────────────
   async function handlePDF(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     setUploading(true); setOpen(false);
@@ -51,7 +64,7 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
     setUploading(false); e.target.value = "";
   }
 
-  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     setOpen(false);
     const reader = new FileReader();
@@ -73,19 +86,79 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
   function submitLink() {
     let url = linkValue.trim();
     if (!url) return;
-    // Auto-prepend https:// if user pasted without scheme
     if (!/^https?:\/\//i.test(url)) url = "https://" + url;
     onChange([...attachments, { id: crypto.randomUUID(), type: "link", name: url, data: url }]);
     setLinkValue(""); setLinkPrompt(false); setOpen(false);
   }
 
+  // ─── Voice (Web Speech API) ─────────────────────────────────────
+  function openVoice() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR: SpeechRecognitionLike = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      setVoiceError("Voice input isn't supported in this browser. Try Chrome or Safari.");
+      setVoiceOpen(true);
+      return;
+    }
+    setVoiceOpen(true);
+    setOpen(false);
+    setVoiceText("");
+    setVoiceError(null);
+
+    const recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    let finalText = "";
+    recognition.onresult = (e: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>; resultIndex: number }) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      setVoiceText((finalText + " " + interim).trim());
+    };
+    recognition.onerror = (e: { error: string }) => {
+      setVoiceError(`Mic error: ${e.error}`);
+      setVoiceListening(false);
+    };
+    recognition.onend = () => setVoiceListening(false);
+
+    try {
+      recognition.start();
+      setVoiceListening(true);
+      recognitionRef.current = recognition;
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : "Couldn't start recording");
+    }
+  }
+
+  function stopVoice() {
+    try { recognitionRef.current?.stop(); } catch { /* */ }
+    setVoiceListening(false);
+  }
+
+  function applyVoice() {
+    if (voiceText.trim() && onVoiceTranscript) onVoiceTranscript(voiceText.trim());
+    closeVoice();
+  }
+
+  function closeVoice() {
+    try { recognitionRef.current?.stop(); } catch { /* */ }
+    setVoiceOpen(false); setVoiceText(""); setVoiceListening(false); setVoiceError(null);
+  }
+
+  // ─── Items ──────────────────────────────────────────────────────
   interface Item {
     icon: typeof FileText;
     label: string;
     subtitle: string;
-    type: AttachmentType;
+    type: ItemType;
     onSelect: () => void;
     keepOpen?: boolean;
+    iconColor?: string;
   }
 
   const ITEMS: Item[] = [
@@ -93,45 +166,67 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
       icon: FileText, label: "Upload a PDF",
       subtitle: "Textbook, worksheet, notes",
       type: "pdf",
+      iconColor: "#ef4444",
       onSelect: () => pdfRef.current?.click(),
     },
     {
       icon: Image, label: "Upload a Photo",
-      subtitle: "Homework, diagram, screenshot",
+      subtitle: "From your photo library",
       type: "photo",
+      iconColor: "#10b981",
       onSelect: () => photoRef.current?.click(),
     },
     {
-      icon: Paperclip, label: "Upload a Document",
-      subtitle: ".txt, .md, .csv, .json",
+      icon: Camera, label: "Take a Photo",
+      subtitle: "Open your camera right now",
+      type: "camera",
+      iconColor: "#f59e0b",
+      onSelect: () => cameraRef.current?.click(),
+    },
+    {
+      icon: Mic, label: "Voice Note",
+      subtitle: "Speak your question — we'll transcribe",
+      type: "voice",
+      iconColor: "#a855f7",
+      onSelect: () => openVoice(),
+    },
+    {
+      icon: Paperclip, label: "Document File",
+      subtitle: "Code, .txt, .md, .csv, .json",
       type: "file",
+      iconColor: "#6366f1",
       onSelect: () => fileRef.current?.click(),
     },
     {
       icon: Link2, label: "Paste a URL",
       subtitle: "Reference a website",
       type: "link",
+      iconColor: "#0ea5e9",
       onSelect: () => setLinkPrompt(true),
-      keepOpen: true, // keep menu open so the URL input is visible
+      keepOpen: true,
     },
   ];
 
   function handleItemClick(item: Item) {
     const allowed = isAllowed(item.type, plan);
+    setPressedType(item.type);
+    setTimeout(() => setPressedType(null), 350);
     if (!allowed) {
-      setOpen(false);
-      router.push("/pricing");
+      setTimeout(() => { setOpen(false); router.push("/pricing"); }, 200);
       return;
     }
-    item.onSelect();
-    if (!item.keepOpen) setOpen(false);
+    setTimeout(() => {
+      item.onSelect();
+      if (!item.keepOpen) setOpen(false);
+    }, 100);
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input ref={pdfRef}   type="file" accept=".pdf,application/pdf" className="hidden" onChange={handlePDF} />
-      <input ref={photoRef} type="file" accept="image/*"              className="hidden" onChange={handlePhoto} />
-      <input ref={fileRef}  type="file" accept=".txt,.md,.csv,.json,.xml,.html" className="hidden" onChange={handleFile} />
+      <input ref={pdfRef}    type="file" accept=".pdf,application/pdf" className="hidden" onChange={handlePDF} />
+      <input ref={photoRef}  type="file" accept="image/*"              className="hidden" onChange={handleImage} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImage} />
+      <input ref={fileRef}   type="file" accept=".txt,.md,.csv,.json,.xml,.html,.js,.ts,.py,.java,.css,.tsx" className="hidden" onChange={handleFile} />
 
       {attachments.map(att => (
         <div key={att.id} className="flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs"
@@ -148,7 +243,6 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
       ))}
 
       <div className="relative" ref={menuRef}>
-        {/* Count badge */}
         {attachments.length > 0 && !open && (
           <div className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 rounded-full flex items-center justify-center font-bold"
             style={{ background: "linear-gradient(135deg,#1d4ed8,#2563eb)", color: "#fff", fontSize: "0.6rem" }}>
@@ -157,10 +251,9 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
         )}
 
         {open && (
-          <div className="absolute bottom-11 left-0 z-20 rounded-2xl p-1.5 min-w-[280px]"
+          <div className="absolute bottom-11 left-0 z-20 rounded-2xl p-1.5 min-w-[300px] max-h-[70vh] overflow-y-auto"
             style={{ background: "var(--settings-bg)", border: "1px solid var(--settings-border)", boxShadow: "0 12px 40px rgba(0,0,0,0.35)" }}>
 
-            {/* URL input — shown when Link is being entered */}
             {linkPrompt && (
               <div className="p-3 mb-1 rounded-xl" style={{ background: "rgba(37,99,235,0.08)", border: "1px solid var(--border)" }}>
                 <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "var(--primary)" }}>Paste URL</div>
@@ -187,7 +280,6 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
               </div>
             )}
 
-            {/* Item list — hidden while editing URL */}
             {!linkPrompt && (
               <>
                 <div className="px-2.5 pt-1.5 pb-1 text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-faint)" }}>
@@ -195,18 +287,26 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
                 </div>
                 {ITEMS.map(item => {
                   const allowed = isAllowed(item.type, plan);
+                  const isPressed = pressedType === item.type;
+                  const ic = item.iconColor ?? "#2563eb";
                   return (
                     <button key={item.label}
                       onClick={() => handleItemClick(item)}
-                      className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                      onMouseEnter={e => { e.currentTarget.style.background = allowed ? "rgba(37,99,235,0.12)" : "var(--surface)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      className="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all"
+                      style={{
+                        background: isPressed ? `${ic}26` : "transparent",
+                        transform: isPressed ? "scale(0.98)" : "scale(1)",
+                      }}
+                      onMouseEnter={e => { if (!isPressed) e.currentTarget.style.background = allowed ? "rgba(37,99,235,0.10)" : "var(--surface)"; }}
+                      onMouseLeave={e => { if (!isPressed) e.currentTarget.style.background = "transparent"; }}>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
                         style={{
-                          background: allowed ? "rgba(37,99,235,0.15)" : "var(--surface)",
-                          color: allowed ? "var(--primary)" : "var(--text-faint)",
+                          background: isPressed ? ic : (allowed ? `${ic}22` : "var(--surface)"),
+                          color: isPressed ? "#fff" : (allowed ? ic : "var(--text-faint)"),
+                          transform: isPressed ? "scale(1.15)" : "scale(1)",
+                          boxShadow: isPressed ? `0 4px 16px ${ic}66` : "none",
                         }}>
-                        <item.icon size={14} />
+                        <item.icon size={15} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
@@ -229,7 +329,7 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
                   <button onClick={() => router.push("/pricing")}
                     className="mx-2 mt-1.5 mb-1 rounded-xl py-2 text-xs font-bold text-center w-[calc(100%-1rem)]"
                     style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#fff" }}>
-                    Unlock files & links ↗
+                    Unlock files & URLs ↗
                   </button>
                 )}
               </>
@@ -247,6 +347,91 @@ export default function AttachmentMenu({ plan, attachments, onChange, onPDFParse
           {uploading ? <span className="text-xs px-1">…</span> : <Plus size={16} />}
         </button>
       </div>
+
+      {/* ─── Voice Note Modal ──────────────────────────────────── */}
+      {voiceOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+          onClick={closeVoice}>
+          <div className="rounded-3xl max-w-md w-full p-7"
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: "rgba(168,85,247,0.18)", color: "#c084fc" }}>
+                  <Mic size={16} />
+                </div>
+                <h2 className="font-extrabold" style={{ color: "#fff" }}>Voice Note</h2>
+              </div>
+              <button onClick={closeVoice} style={{ color: "#9ca3af" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {voiceError ? (
+              <div className="rounded-xl p-3 mb-4 text-xs" style={{ background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.3)", color: "#fca5a5" }}>
+                ⚠ {voiceError}
+              </div>
+            ) : (
+              <>
+                {/* Mic visual */}
+                <div className="flex justify-center mb-5">
+                  <div className="relative">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${voiceListening ? "animate-pulse" : ""}`}
+                      style={{
+                        background: voiceListening ? "linear-gradient(135deg,#a855f7,#c084fc)" : "rgba(255,255,255,0.06)",
+                        boxShadow: voiceListening ? "0 0 40px rgba(168,85,247,0.5)" : "none",
+                      }}>
+                      <Mic size={28} style={{ color: voiceListening ? "#fff" : "#9ca3af" }} />
+                    </div>
+                    {voiceListening && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: "#ef4444" }} />
+                        <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: "#ef4444" }} />
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-sm text-center mb-1" style={{ color: "#d1d5db" }}>
+                  {voiceListening ? "Listening… speak naturally" : voiceText ? "Got it. Edit or send." : "Tap below to start"}
+                </p>
+                <div className="rounded-xl p-3 my-4 min-h-[80px] max-h-[200px] overflow-y-auto"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <p className="text-sm leading-relaxed" style={{ color: voiceText ? "#fff" : "#6b7280" }}>
+                    {voiceText || "Your transcription will appear here…"}
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-3">
+              {voiceListening ? (
+                <button onClick={stopVoice}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold"
+                  style={{ background: "#ef4444", color: "#fff" }}>
+                  <Square size={14} fill="#fff" /> Stop
+                </button>
+              ) : (
+                <button onClick={openVoice} disabled={!!voiceError}
+                  className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold"
+                  style={{ background: voiceError ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg,#a855f7,#7c3aed)", color: "#fff", cursor: voiceError ? "not-allowed" : "pointer" }}>
+                  <Mic size={14} /> {voiceText ? "Record more" : "Start recording"}
+                </button>
+              )}
+              {voiceText && !voiceListening && (
+                <button onClick={applyVoice}
+                  className="flex-1 rounded-xl py-3 text-sm font-bold text-white"
+                  style={{ background: "linear-gradient(135deg,#1d4ed8,#2563eb)" }}>
+                  Use This Text
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
