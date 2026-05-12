@@ -61,6 +61,8 @@ export default function ChatInterface({ plan }: Props) {
   const [classAssignments, setClassAssignments] = useState<{ id: string; title: string }[]>([]);
   const [activeAssignment, setActiveAssignmentState] = useState<ActiveAssignment | null>(null);
   const [assignmentMenuOpen, setAssignmentMenuOpen] = useState(false);
+  const [classPickerOpen, setClassPickerOpen] = useState(false);
+  const [classesLoaded, setClassesLoaded] = useState(false);
   useEffect(() => { setQuestionsUsed(getTodayCount()); }, []);
   useEffect(() => {
     if (!user?.id) return;
@@ -69,6 +71,9 @@ export default function ChatInterface({ plan }: Props) {
       setMyClasses(enrolled);
       setMode(getChatMode());
       setActiveAssignmentState(getActiveAssignment());
+      setClassesLoaded(true);
+      // Force students to confirm their class at the start of each chat session
+      if (enrolled.length > 0) setClassPickerOpen(true);
     })();
   }, [user?.id]);
 
@@ -98,14 +103,15 @@ export default function ChatInterface({ plan }: Props) {
   const atQuota = isFree && remaining <= 0;
   const activeClassRoom = mode.type === "class" ? myClasses.find(c => c.id === mode.classId) ?? null : null;
 
-  // Auto-pick first class if student has classes but no class is selected
+  // If saved class is no longer valid (e.g. removed from class), clear it.
+  // The modal will then force a re-pick. Students in 0 classes stay in "none" mode.
   useEffect(() => {
     if (myClasses.length === 0) return;
-    if (mode.type === "class" && myClasses.some(c => c.id === mode.classId)) return;
-    // No valid class selected — pick the first one
-    const next: ChatMode = { type: "class", classId: myClasses[0].id };
-    setMode(next);
-    setChatMode(next);
+    if (mode.type === "class" && !myClasses.some(c => c.id === mode.classId)) {
+      setMode({ type: "none" });
+      setChatMode({ type: "none" });
+      setClassPickerOpen(true);
+    }
   }, [myClasses, mode]);
 
   function pickMode(next: ChatMode) {
@@ -140,6 +146,11 @@ export default function ChatInterface({ plan }: Props) {
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || streaming) return;
+    // Force class selection before sending
+    if (myClasses.length > 0 && mode.type !== "class") {
+      setClassPickerOpen(true);
+      return;
+    }
     // ─── Input validation: prevent accidental/empty/garbage submissions ───
     const meaningful = trimmed.replace(/[\s\W]+/g, "");
     if (meaningful.length < 4) {
@@ -274,14 +285,15 @@ export default function ChatInterface({ plan }: Props) {
         return currentMessages;
       });
     }
-  }, [messages, pdfText, attachments, streaming, settings, aiModel]);
+  }, [messages, pdfText, attachments, streaming, settings, aiModel, plan, activeAssignment, myClasses, mode]);
 
   function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); }
   }
 
   const streamingId = streaming ? messages[messages.length - 1]?.id : null;
-  const canSend = input.trim().length > 0 && !streaming && !atQuota;
+  const needsClassPick = classesLoaded && myClasses.length > 0 && mode.type !== "class";
+  const canSend = input.trim().length > 0 && !streaming && !atQuota && !needsClassPick;
 
   const InputBar = (
     <div className={`search-bar ${focused ? "search-bar-focused" : ""}`}>
@@ -485,6 +497,54 @@ export default function ChatInterface({ plan }: Props) {
       )}
 
       <SettingsPanel open={settingsOpen} settings={settings} onChange={saveSettings} onClose={() => setSettingsOpen(false)} />
+
+      {/* Class picker — forces students to confirm class at the start of each chat session */}
+      {classPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}>
+          <div className="rounded-3xl max-w-md w-full p-7"
+            style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}>
+            <div className="text-4xl mb-4 text-center">🎓</div>
+            <h2 className="font-extrabold text-xl mb-2 text-center" style={{ color: "#fff" }}>
+              Which class are you working on?
+            </h2>
+            <p className="text-sm mb-5 text-center" style={{ color: "#9ca3af" }}>
+              Pick the class so your teacher sees your progress for the right one. You can switch any time during the chat.
+            </p>
+            <div className="flex flex-col gap-2 mb-2">
+              {myClasses.map(c => {
+                const isCurrent = mode.type === "class" && mode.classId === c.id;
+                return (
+                  <button key={c.id}
+                    onClick={() => {
+                      pickMode({ type: "class", classId: c.id });
+                      setClassPickerOpen(false);
+                    }}
+                    className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
+                    style={{
+                      background: isCurrent ? "rgba(59,130,246,0.22)" : "rgba(255,255,255,0.05)",
+                      border: `1.5px solid ${isCurrent ? "rgba(59,130,246,0.55)" : "rgba(255,255,255,0.08)"}`,
+                    }}
+                    onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                    onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+                      <GraduationCap size={16} style={{ color: "#fff" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold" style={{ color: "#fff" }}>{c.name}</div>
+                      <div className="text-xs font-mono mt-0.5" style={{ color: "#9ca3af" }}>{c.code}</div>
+                    </div>
+                    {isCurrent && (
+                      <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background: "rgba(59,130,246,0.3)", color: "#93c5fd" }}>Last used</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Short-input warning toast */}
       {shortWarning && (
