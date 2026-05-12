@@ -11,7 +11,7 @@ import NavMenu from "./NavMenu";
 import type { Message, ContentBlock, ImageMediaType, AISettings, AIModel } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { getTodayCount, incrementTodayCount, remainingQuestions, FREE_DAILY_LIMIT } from "@/lib/dailyLimit";
-import { getClassesByStudent, getClassesByTeacher, type ClassRoom } from "@/lib/classStore";
+import { getClassesByStudent, type ClassRoom } from "@/lib/classStore";
 import { getChatMode, setChatMode, type ChatMode } from "@/lib/activeClass";
 
 const SUGGESTED = [

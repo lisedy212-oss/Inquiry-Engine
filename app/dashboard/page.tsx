@@ -7,8 +7,8 @@ import { useUser } from "@clerk/nextjs";
 import { setChatMode } from "@/lib/activeClass";
 import {
   Users, TrendingUp, Brain, AlertTriangle, Sparkles,
-  Search, ChevronRight, Activity, Award, Copy, Check,
-  Plus, BookOpen, Lock, GraduationCap, ChevronLeft, Trash2,
+  Search, ChevronRight, Copy, Check,
+  Plus, Lock, GraduationCap, ChevronLeft, Trash2,
   StickyNote, Download, ArrowUpDown, UserPlus, X, Clock,
 } from "lucide-react";
 import NavMenu from "@/components/NavMenu";
@@ -1203,4 +1203,3 @@ function timeAgo(t: number | undefined): string {
   return new Date(t).toLocaleDateString();
 }
 
-void Activity;

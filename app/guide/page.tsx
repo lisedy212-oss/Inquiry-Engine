@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  GraduationCap, Users, Sparkles, MessageSquare, Brain,
+  GraduationCap, Users, Sparkles, Brain,
   Shield, FileText, Image as ImageIcon, KeyRound, Eye, EyeOff,
   AlertTriangle, TrendingUp, Award, StickyNote, Download,
-  Zap, BookOpen, ChevronRight, CheckCircle2, UserPlus,
+  Zap, ChevronRight, CheckCircle2, UserPlus,
 } from "lucide-react";
 import NavMenu from "@/components/NavMenu";
 
@@ -475,5 +475,3 @@ function Faq({ q, a }: { q: string; a: string }) {
 }
 
 // silence unused-warning helpers
-void BookOpen;
-void MessageSquare;
