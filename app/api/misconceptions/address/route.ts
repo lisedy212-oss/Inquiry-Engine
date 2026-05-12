@@ -17,12 +17,13 @@ export async function POST(req: NextRequest) {
 
   // Permission: teacher of a class this student is in (or self)
   if (userId !== body.studentId) {
-    const { data: shared } = await sb
-      .from("class_teachers")
-      .select("class_id, class_students!inner(student_id)")
-      .eq("teacher_id", userId)
-      .eq("class_students.student_id", body.studentId);
-    if (!shared || shared.length === 0) return err("Forbidden", 403);
+    const { data: taught } = await sb.from("class_teachers")
+      .select("class_id").eq("teacher_id", userId);
+    const classIds = (taught ?? []).map((c: { class_id: string }) => c.class_id);
+    if (classIds.length === 0) return err("Forbidden", 403);
+    const { data: enrolled } = await sb.from("class_students")
+      .select("class_id").eq("student_id", body.studentId).in("class_id", classIds);
+    if (!enrolled || enrolled.length === 0) return err("Forbidden", 403);
   }
 
   const { data: snaps } = await sb.from("snapshots").select("id, misconceptions").eq("student_id", body.studentId);
