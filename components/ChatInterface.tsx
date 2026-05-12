@@ -8,7 +8,6 @@ import ChatMessage from "./ChatMessage";
 import AttachmentMenu, { type PendingAttachment } from "./AttachmentMenu";
 import SettingsPanel from "./SettingsPanel";
 import NavMenu from "./NavMenu";
-import OnboardingTour from "./OnboardingTour";
 import type { Message, ContentBlock, ImageMediaType, AISettings, AIModel } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { getTodayCount, incrementTodayCount, remainingQuestions, FREE_DAILY_LIMIT } from "@/lib/dailyLimit";
@@ -554,9 +553,6 @@ export default function ChatInterface({ plan }: Props) {
           ⚠️ {shortWarning}
         </div>
       )}
-
-      {/* First-time user onboarding tour (only shows once, dismissable) */}
-      <OnboardingTour />
 
       {/* Quota exhausted modal */}
       {quotaModal && (
