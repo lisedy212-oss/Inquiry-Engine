@@ -168,6 +168,23 @@ function StudentGuide() {
         </Callout>
       </Card>
 
+      {/* Assignments */}
+      <Card>
+        <SectionTitle icon="📝" title="Working on a specific assignment" />
+        <p className="text-sm leading-relaxed mb-3" style={{ color: "#475569" }}>
+          If your teacher has added an assignment to your class, you&apos;ll see a <strong>📝 Assignment</strong> pill above the chat search bar.
+        </p>
+        <ol className="text-sm space-y-1.5 ml-5 list-decimal" style={{ color: "#374151" }}>
+          <li>Tap the pill to pick which assignment you&apos;re working on</li>
+          <li>Once selected, the AI knows the exact worksheet you have in front of you</li>
+          <li>It can reference problem numbers and stay focused on what the assignment actually asks</li>
+          <li>Switch back to &ldquo;General study&rdquo; any time if you want help with something unrelated</li>
+        </ol>
+        <Callout color="blue" icon={<Sparkles size={14} />}>
+          This is the difference between Inquiry Engine and ChatGPT: it knows the <em>exact homework</em> your teacher gave you.
+        </Callout>
+      </Card>
+
       {/* Features */}
       <Card>
         <SectionTitle icon="🛠️" title="Features in the chat" />
@@ -241,7 +258,7 @@ function TeacherGuide() {
             You&apos;ll see two codes — a <strong style={{ color: "#2563eb" }}>blue student code</strong> and an <strong style={{ color: "#d97706" }}>amber teacher code</strong>. Click any code to copy it.
           </Step>
           <Step n={3} title="Share with students">
-            Put the blue code on the board. Students enter it once and they&apos;re in. No emails, no rosters.
+            Two ways to onboard students: put the blue code on the board (they enter it on the dashboard), or click <strong>&ldquo;Invite Students&rdquo;</strong> and paste their emails — each student gets a one-click join link.
           </Step>
           <Step n={4} title="Track in real time">
             Click any student in your roster to see their full Learning DNA — concepts mastered, misconceptions to address, growth over time.
@@ -298,10 +315,38 @@ function TeacherGuide() {
         </div>
       </Card>
 
+      {/* Assignments — teacher view */}
+      <Card highlight>
+        <SectionTitle icon="📝" title="Assignment-aware tutoring (the killer feature)" />
+        <p className="text-sm leading-relaxed mb-4" style={{ color: "#475569" }}>
+          You can upload your actual worksheets, problem sets, or readings to a class. When students chat, they pick which assignment they&apos;re working on, and the AI is grounded in <strong>that specific text</strong> — not a generic guess.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Step n={1} title="Open a class and find the 📝 Assignments section">
+            It&apos;s right above the student roster.
+          </Step>
+          <Step n={2} title="Add the assignment two ways">
+            <strong>Upload PDF</strong>: we&apos;ll parse it to text automatically. Works for any standard worksheet.<br/>
+            <strong>Add Assignment</strong>: paste text manually (great for short problem sets typed into a doc).
+          </Step>
+          <Step n={3} title="Title it clearly">
+            Like <em>&ldquo;Chapter 4 — Quadratic Equations&rdquo;</em>. Students see this title when they pick an assignment.
+          </Step>
+          <Step n={4} title="The AI is now grounded">
+            Students in your class will see a purple <strong>📝 Working on: [title]</strong> pill above their chat. Every response the AI gives references your actual worksheet — exact problem numbers, your specific wording, what you expect.
+          </Step>
+        </div>
+        <Callout color="blue" icon={<Sparkles size={14} />}>
+          This is the single most defensible feature against &ldquo;why don&apos;t my students just use ChatGPT?&rdquo; ChatGPT can&apos;t know what&apos;s on your exact worksheet. The Inquiry Engine does.
+        </Callout>
+      </Card>
+
       {/* Teacher tools */}
       <Card>
         <SectionTitle icon="🛠️" title="Tools at your disposal" />
         <div className="grid md:grid-cols-2 gap-4">
+          <Feature icon="📝" title="Assignments" desc="Upload worksheets, get grounded tutoring on the exact assignment." />
+          <Feature icon="📧" title="Email invitations" desc="Paste student emails, each gets a one-click join link. No code typing." />
           <Feature icon={<StickyNote size={16} />} title="Private notes" desc="Per-student, per-teacher. Saves automatically." />
           <Feature icon={<CheckCircle2 size={16} />} title="Mark misconceptions" desc="One click moves a misconception from 'open' to 'addressed' (green)." />
           <Feature icon={<Download size={16} />} title="Export CSV" desc="One click downloads your full roster with all stats. Drop it in your grade book." />
