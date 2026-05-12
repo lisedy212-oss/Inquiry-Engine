@@ -61,8 +61,10 @@ export default function ChatInterface({ plan }: Props) {
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
-      const [enrolled, taught] = await Promise.all([getClassesByStudent(), getClassesByTeacher()]);
-      setMyClasses([...enrolled, ...taught]);
+      // Only show classes where the user is a STUDENT.
+      // Teachers chatting in their own class would pollute their own dashboard.
+      const enrolled = await getClassesByStudent();
+      setMyClasses(enrolled);
       setMode(getChatMode());
     })();
   }, [user?.id]);
