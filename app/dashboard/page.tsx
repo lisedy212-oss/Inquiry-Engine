@@ -969,11 +969,10 @@ function CreateClassModal({ onClose, onCreated }: { onClose: () => void; onCreat
         <>
           <div className="text-3xl mb-4 text-center">🎉</div>
           <h2 className="font-extrabold text-xl mb-2 text-center" style={{ color: "#0f172a" }}>Class created!</h2>
-          <p className="text-sm mb-5 text-center" style={{ color: "#64748b" }}>Share this code with your students:</p>
+          <p className="text-sm mb-5 text-center" style={{ color: "#64748b" }}>
+            Share this code with your students. You can also email them an invite from the class page.
+          </p>
           <div className="mb-5"><ClassCode code={created.code} large /></div>
-          <div className="rounded-xl p-3 mb-5 text-xs" style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8" }}>
-            ℹ️ We&apos;ve pre-populated 6 sample students so you can see what the dashboard looks like.
-          </div>
           <button onClick={onCreated} className="w-full rounded-xl py-2.5 text-sm font-bold text-white"
             style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
             Go to Class
