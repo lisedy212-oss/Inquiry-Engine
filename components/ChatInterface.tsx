@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS } from "@/types";
 import { getTodayCount, incrementTodayCount, remainingQuestions, FREE_DAILY_LIMIT } from "@/lib/dailyLimit";
 import { getClassesByStudent, type ClassRoom } from "@/lib/classStore";
 import { getChatMode, setChatMode, type ChatMode } from "@/lib/activeClass";
+import { getActiveAssignment, setActiveAssignment, type ActiveAssignment } from "@/lib/activeAssignment";
 
 const SUGGESTED = [
   { emoji: "📐", text: "I have a math problem — where do I even start?" },
@@ -57,17 +58,41 @@ export default function ChatInterface({ plan }: Props) {
   const [myClasses, setMyClasses] = useState<ClassRoom[]>([]);
   const [mode, setMode] = useState<ChatMode>({ type: "none" });
   const [classMenuOpen, setClassMenuOpen] = useState(false);
+  const [classAssignments, setClassAssignments] = useState<{ id: string; title: string }[]>([]);
+  const [activeAssignment, setActiveAssignmentState] = useState<ActiveAssignment | null>(null);
+  const [assignmentMenuOpen, setAssignmentMenuOpen] = useState(false);
   useEffect(() => { setQuestionsUsed(getTodayCount()); }, []);
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
-      // Only show classes where the user is a STUDENT.
-      // Teachers chatting in their own class would pollute their own dashboard.
       const enrolled = await getClassesByStudent();
       setMyClasses(enrolled);
       setMode(getChatMode());
+      setActiveAssignmentState(getActiveAssignment());
     })();
   }, [user?.id]);
+
+  // When the active class changes, fetch its assignments.
+  // If the previously-active assignment is from a different class, clear it.
+  useEffect(() => {
+    const classId = mode.type === "class" ? mode.classId : null;
+    if (!classId) { setClassAssignments([]); return; }
+    fetch(`/api/classes/${classId}/assignments`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : { assignments: [] })
+      .then(data => setClassAssignments(data.assignments ?? []))
+      .catch(() => setClassAssignments([]));
+    // Clear active assignment if it doesn't belong to this class
+    if (activeAssignment && activeAssignment.classId !== classId) {
+      setActiveAssignmentState(null);
+      setActiveAssignment(null);
+    }
+  }, [mode, activeAssignment]);
+
+  function pickAssignment(a: ActiveAssignment | null) {
+    setActiveAssignmentState(a);
+    setActiveAssignment(a);
+    setAssignmentMenuOpen(false);
+  }
   const isFree = plan === "free";
   const remaining = isFree ? Math.max(0, FREE_DAILY_LIMIT - questionsUsed) : Infinity;
   const atQuota = isFree && remaining <= 0;
@@ -161,7 +186,7 @@ export default function ChatInterface({ plan }: Props) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, pdfContent: activePdf, settings, model: aiModel }),
+        body: JSON.stringify({ messages: history, pdfContent: activePdf, settings, model: aiModel, assignmentId: activeAssignment?.id }),
       });
 
       if (!res.ok || !res.body) {
@@ -290,6 +315,47 @@ export default function ChatInterface({ plan }: Props) {
                   icon={<GraduationCap size={12} />} title={c.name} subtitle={`Code: ${c.code}`}
                   onClick={() => pickMode({ type: "class", classId: c.id })}
                   activeColor="#3b82f6"
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Assignment selector — shown only when in a class with assignments */}
+      {mode.type === "class" && classAssignments.length > 0 && (
+        <div className="relative" style={{ marginBottom: "-0.2rem" }}>
+          <button onClick={() => setAssignmentMenuOpen(o => !o)}
+            className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all"
+            style={{
+              background: activeAssignment ? "rgba(168,85,247,0.18)" : "var(--surface)",
+              color: activeAssignment ? "#c084fc" : "var(--text-muted)",
+              border: `1px solid ${activeAssignment ? "rgba(168,85,247,0.4)" : "var(--border)"}`,
+              cursor: "pointer",
+            }}>
+            📝 {activeAssignment ? <>Working on: <strong>{activeAssignment.title}</strong></> : <>Assignment: <span style={{ opacity: 0.7 }}>None</span></>}
+            <ChevronDown size={11} style={{ opacity: 0.7 }} />
+          </button>
+
+          {assignmentMenuOpen && (
+            <div className="absolute top-full mt-1 left-0 z-30 rounded-xl p-1.5 min-w-[280px]"
+              style={{ background: "var(--settings-bg)", border: "1px solid var(--settings-border)", boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
+              <div className="px-2.5 pt-1.5 pb-1 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>
+                Pick an assignment to work on
+              </div>
+              <ModeOption
+                active={!activeAssignment}
+                icon="✨" title="General study" subtitle="Not tied to an assignment"
+                onClick={() => pickAssignment(null)}
+                activeColor="#94a3b8"
+              />
+              <div className="my-1.5 mx-1.5 border-t" style={{ borderColor: "var(--border)" }} />
+              {classAssignments.map(a => (
+                <ModeOption key={a.id}
+                  active={activeAssignment?.id === a.id}
+                  icon="📝" title={a.title} subtitle="Click to focus the tutor on this assignment"
+                  onClick={() => pickAssignment({ id: a.id, title: a.title, classId: (mode as { type: "class"; classId: string }).classId })}
+                  activeColor="#a855f7"
                 />
               ))}
             </div>

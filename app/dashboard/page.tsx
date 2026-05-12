@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -401,6 +401,9 @@ function ClassView({ classRoom, members, viewerId, onOpenStudent, onRefresh, onI
           </div>
         </div>
       </div>
+
+      {/* Assignments */}
+      <AssignmentsPanel classId={classRoom.id} />
 
       {/* Roster */}
       <div className="rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
@@ -1155,6 +1158,144 @@ function ClassCode({ code, dark, large, accent }: { code: string; dark?: boolean
       {code}
       {copied ? <Check size={large ? 18 : 13} /> : <Copy size={large ? 16 : 12} style={{ opacity: 0.7 }} />}
     </button>
+  );
+}
+
+// ─── Assignments panel (teacher view) ───────────────────────────────
+interface AssignmentItem { id: string; title: string; content: string; created_at: string }
+
+function AssignmentsPanel({ classId }: { classId: string }) {
+  const [assignments, setAssignments] = useState<AssignmentItem[] | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const pdfRef = useRef<HTMLInputElement>(null);
+
+  const reload = useCallback(() => {
+    fetch(`/api/classes/${classId}/assignments`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : { assignments: [] })
+      .then(data => setAssignments(data.assignments ?? []))
+      .catch(() => setAssignments([]));
+  }, [classId]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  async function save() {
+    if (!title.trim() || !content.trim() || busy) return;
+    setBusy(true);
+    const r = await fetch(`/api/classes/${classId}/assignments`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, content }),
+    });
+    setBusy(false);
+    if (r.ok) { setTitle(""); setContent(""); setAdding(false); reload(); }
+    else { const data = await r.json(); alert(data.error ?? "Couldn't save"); }
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Delete this assignment?")) return;
+    const r = await fetch(`/api/assignments/${id}`, { method: "DELETE" });
+    if (r.ok) reload();
+  }
+
+  async function uploadPdf(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true);
+    const form = new FormData(); form.append("file", file);
+    const r = await fetch("/api/parse-pdf", { method: "POST", body: form });
+    const json = await r.json();
+    setUploading(false);
+    e.target.value = "";
+    if (json.error) { alert(json.error); return; }
+    setTitle(prev => prev || file.name.replace(/\.pdf$/i, ""));
+    setContent(prev => prev ? `${prev}\n\n${json.text}` : json.text);
+    setAdding(true);
+  }
+
+  return (
+    <div className="rounded-2xl mb-6 overflow-hidden" style={{ background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}>
+      <div className="px-6 py-4 border-b flex items-center justify-between flex-wrap gap-3" style={{ borderColor: "#f1f5f9" }}>
+        <div>
+          <h2 className="font-bold text-sm" style={{ color: "#0f172a" }}>📝 Assignments</h2>
+          <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>Students can pick an active assignment in chat. The AI will tutor them specifically on it.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input ref={pdfRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={uploadPdf} />
+          <button onClick={() => pdfRef.current?.click()} disabled={uploading}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg"
+            style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>
+            {uploading ? "Parsing…" : "📄 Upload PDF"}
+          </button>
+          <button onClick={() => setAdding(a => !a)}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg text-white"
+            style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}>
+            <Plus size={11} /> {adding ? "Cancel" : "Add Assignment"}
+          </button>
+        </div>
+      </div>
+
+      {adding && (
+        <div className="px-6 py-4 border-b" style={{ borderColor: "#f1f5f9", background: "#f8fafc" }}>
+          <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "#64748b" }}>New Assignment</div>
+          <input value={title} onChange={e => setTitle(e.target.value)}
+            placeholder='Title (e.g. "Chapter 4 — Quadratic Equations")'
+            className="w-full rounded-lg px-3 py-2 text-sm mb-2 outline-none"
+            style={{ background: "#fff", border: "1px solid #e2e8f0", color: "#0f172a" }} />
+          <textarea value={content} onChange={e => setContent(e.target.value)} rows={6}
+            placeholder="Paste the assignment text. Include problem numbers, instructions, and any context students need."
+            className="w-full rounded-lg px-3 py-2 text-sm font-mono outline-none resize-y mb-2"
+            style={{ background: "#fff", border: "1px solid #e2e8f0", color: "#0f172a", minHeight: 140 }} />
+          <div className="flex justify-end gap-2">
+            <button onClick={() => { setAdding(false); setTitle(""); setContent(""); }}
+              className="rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: "#f1f5f9", color: "#64748b" }}>
+              Cancel
+            </button>
+            <button onClick={save} disabled={!title.trim() || !content.trim() || busy}
+              className="rounded-lg px-3 py-1.5 text-xs font-bold text-white"
+              style={{ background: title.trim() && content.trim() && !busy ? "linear-gradient(135deg,#2563eb,#1d4ed8)" : "#cbd5e1" }}>
+              {busy ? "Saving…" : "Save Assignment"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="divide-y" style={{ borderColor: "#f1f5f9" }}>
+        {assignments === null ? (
+          <div className="p-6 text-center text-sm" style={{ color: "#94a3b8" }}>Loading…</div>
+        ) : assignments.length === 0 ? (
+          <div className="p-6 text-center text-sm" style={{ color: "#94a3b8" }}>
+            No assignments yet. Add one so students can be tutored specifically on it.
+          </div>
+        ) : assignments.map(a => (
+          <div key={a.id} className="px-6 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <button onClick={() => setExpanded(expanded === a.id ? null : a.id)}
+                className="flex-1 text-left">
+                <div className="font-semibold text-sm" style={{ color: "#0f172a" }}>{a.title}</div>
+                <div className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
+                  Added {new Date(a.created_at).toLocaleDateString()} · {a.content.length.toLocaleString()} chars
+                </div>
+              </button>
+              <button onClick={() => remove(a.id)}
+                className="p-1.5 rounded-lg" style={{ color: "#cbd5e1" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
+                onMouseLeave={e => (e.currentTarget.style.color = "#cbd5e1")}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+            {expanded === a.id && (
+              <pre className="mt-3 rounded-lg p-3 text-xs whitespace-pre-wrap max-h-[300px] overflow-y-auto"
+                style={{ background: "#f8fafc", color: "#374151", border: "1px solid #f1f5f9", fontFamily: "ui-monospace, monospace" }}>
+                {a.content}
+              </pre>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

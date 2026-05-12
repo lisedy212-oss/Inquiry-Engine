@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
+import { supabaseServer } from "@/lib/supabase-server";
 import { DEFAULT_SETTINGS } from "@/types";
 import type { ChatRequest, AIModel } from "@/types";
 
@@ -31,6 +33,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { messages, pdfContent, settings = DEFAULT_SETTINGS, model = "default" } = body;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const assignmentId = (body as any).assignmentId as string | undefined;
 
   let system = buildSystemPrompt(settings);
   if (pdfContent) {
@@ -40,6 +44,34 @@ export async function POST(req: NextRequest) {
       `When referencing this document, always cite the specific [PAGE N] marker.\n\n` +
       pdfContent +
       `\n</student_document>`;
+  }
+
+  // ─── Assignment-aware tutoring ──────────────────────────────────
+  if (assignmentId) {
+    const { userId } = await auth();
+    if (userId) {
+      try {
+        const sb = supabaseServer();
+        const { data: a } = await sb.from("assignments").select("title, content, class_id").eq("id", assignmentId).maybeSingle();
+        if (a) {
+          // Permission check: student or teacher of that class
+          const [{ data: t }, { data: s }] = await Promise.all([
+            sb.from("class_teachers").select("teacher_id").eq("class_id", a.class_id).eq("teacher_id", userId).maybeSingle(),
+            sb.from("class_students").select("student_id").eq("class_id", a.class_id).eq("student_id", userId).maybeSingle(),
+          ]);
+          if (t || s) {
+            system +=
+              `\n\n<active_assignment title="${escapeForXml(a.title)}">\n` +
+              `The student is working on this specific assignment from their teacher. Tutor them on this assignment only. ` +
+              `Reference exact problem numbers when relevant. Stay focused on what this assignment actually asks — don't go off-topic or invent problems not in the assignment.\n\n` +
+              `--- ASSIGNMENT CONTENT ---\n` +
+              a.content +
+              `\n--- END ASSIGNMENT ---\n` +
+              `</active_assignment>`;
+          }
+        }
+      } catch { /* ignore — assignment context is optional */ }
+    }
   }
 
   const isThinking = model === "thinking";
@@ -93,4 +125,8 @@ export async function POST(req: NextRequest) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+function escapeForXml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]!);
 }
