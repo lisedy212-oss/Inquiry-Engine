@@ -317,7 +317,7 @@ function TeacherGuide() {
 
       {/* Assignments — teacher view */}
       <Card highlight>
-        <SectionTitle icon="📝" title="Assignment-aware tutoring (the killer feature)" />
+        <SectionTitle icon="📝" title="Assignment-aware tutoring" />
         <p className="text-sm leading-relaxed mb-4" style={{ color: "#475569" }}>
           You can upload your actual worksheets, problem sets, or readings to a class. When students chat, they pick which assignment they&apos;re working on, and the AI is grounded in <strong>that specific text</strong> — not a generic guess.
         </p>
