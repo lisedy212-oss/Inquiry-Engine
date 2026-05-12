@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
     customer_email: email,
     line_items: [{ price: priceId, quantity: 1 }],
     metadata: { clerkUserId: userId, plan },
+    // Persist clerkUserId on the subscription itself so webhook events
+    // (cancellation, plan change, payment failure) can look up the user.
+    subscription_data: {
+      metadata: { clerkUserId: userId, plan },
+    },
     success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/pricing?canceled=1`,
     allow_promotion_codes: true,
